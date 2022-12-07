@@ -1,0 +1,61 @@
+#!/bin/bash
+#
+# adist  for TRAJECTORY.xyz or CREST.xyz etc files
+# use  adist Atom1 Atom2 Filename
+###
+
+atom_A=$1
+atom_B=$2
+FILE=$3
+
+#for F in $@
+#for F in $*
+#do
+#FILE=$3
+#if ["$1" != "$F"]; then
+#fi
+# echo "$F"
+
+# 1) PLOT ASCII dump or PLOT png
+
+awk -v ATOM_A="$atom_A" -v ATOM_B="$atom_B"  '
+$1 ~ /^[0-9]/  {NAtoms = $1; Nline = NR};
+NR==(Nline + 1 + ATOM_A) { split($0 , A) }
+NR==(Nline + 1 + ATOM_B) { split($0 , B) ;
+
+printf(" %.3f\n ",  sqrt( (A[2]-B[2])**2 + (A[3]-B[3])**2 + (A[4]-B[4])**2) ) ;
+
+#print A[2] ;
+#for (x in A) print A[x] ;
+
+};
+#    prime    $3  | gnuplot -p -e "set term dumb ; plot '-' w l"
+            ' $3  | gnuplot -p -e "set term png ; set output '$3"_"$1"_"$2.png' ; plot '-' w l"
+
+# 2) ANALYSIS
+awk -v ATOM_A="$atom_A" -v ATOM_B="$atom_B"  '
+$1 ~ /^[0-9]/  {NAtoms = $1; Nline = NR};
+NR==(Nline + 1) { ENERGY = $1 }            ;
+NR==(Nline + 1 + ATOM_A) { split($0 , A) } ;
+NR==(Nline + 1 + ATOM_B) { split($0 , B) ;
+printf(" %.8f  "  "%.3f\n" , ENERGY , (sqrt( (A[2]-B[2])**2 + (A[3]-B[3])**2 + (A[4]-B[4])**2) ) ) ;
+                          };
+#    prime    $3  | gnuplot -p -e "set term dumb ; plot '-' w l"
+#    prime    $3  | gnuplot -p -e "set term png ; set output '$3"_"$1"_"$2.png' ; plot '-' w l"
+   ' $3
+
+# 3) THRESHOLD
+awk -v ATOM_A="$atom_A" -v ATOM_B="$atom_B"  '
+$1 ~ /^[0-9]/  {NAtoms = $1; Nline = NR};
+NR==(Nline + 1) { ENERGY = $1 }            ;
+NR==(Nline + 1 + ATOM_A) { split($0 , A) } ;
+NR==(Nline + 1 + ATOM_B) { split($0 , B) ;
+     DIST= (sqrt( (A[2]-B[2])**2 + (A[3]-B[3])**2 + (A[4]-B[4])**2) ) ;
+     if (DIST < 3.0) {
+                       print "    " ENERGY " " DIST " <_THRESHOLD" ;
+                       ThreshCount++ }
+                          };
+  END {print "ThresholdCount = " ThreshCount}
+   ' $3
+
+####
